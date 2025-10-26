@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/thebearodactyl/apiodactyl/internal/config"
 	"github.com/thebearodactyl/apiodactyl/internal/database"
@@ -72,14 +72,42 @@ func setupRouter(db *database.DB, cfg *config.Config) *gin.Engine {
 	router.Use(middleware.RequestLogger())
 	router.Use(gin.Recovery())
 
-	corsConfig := cors.Config{
-		AllowOrigins:     []string{"https://*.bearodactyl.dev", "http://localhost:5173"},
-		AllowWildcard:    true,
-		AllowCredentials: true,
-		AllowFiles:       false,
-	}
+	router.Use(func(c *gin.Context) {
+		origin := c.GetHeader("Origin")
+		userAgent := c.GetHeader("User-Agent")
 
-	router.Use(cors.New(corsConfig))
+		allow := false
+
+		if userAgent != "" {
+			lowerUA := strings.ToLower(userAgent)
+			if strings.Contains(lowerUA, "bearo") {
+				allow = true
+			} else {
+				wellKnownAgents := []string{"Mozilla", "Chrome", "Safari", "Edge", "Postman"}
+				for _, agent := range wellKnownAgents {
+					if strings.Contains(userAgent, agent) {
+						allow = true
+						break
+					}
+				}
+			}
+		}
+
+		if allow {
+			c.Header("Access-Control-Allow-Origin", origin)
+			c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Authorization")
+			c.Header("Access-Control-Allow-Credentials", "true")
+		}
+
+		if c.Request.Method == http.MethodOptions {
+			c.AbortWithStatus(http.StatusNoContent)
+			return
+		}
+
+		c.Next()
+	})
+
 	router.NoRoute(handlers.NotFound)
 
 	h := handlers.NewHandler(db)
