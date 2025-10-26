@@ -1,0 +1,11 @@
+services:
+  api:
+    build: .
+    container_name: apiodactyl
+    ports:
+      - "18081:18081"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
