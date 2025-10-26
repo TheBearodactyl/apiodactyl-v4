@@ -23,7 +23,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY --from=builder /app/apiodactyl .
 COPY .env .env
-COPY ./files files
 
 EXPOSE 18081
 

@@ -8,4 +8,6 @@ services:
       - .env
     volumes:
       - ./data:/app/data
+      - ./bearodata.db:/app/bearodata.db
+      - ./files:/app/files
     restart: unless-stopped
