@@ -74,7 +74,6 @@ func setupRouter(db *database.DB, cfg *config.Config) *gin.Engine {
 	router.Use(gin.Recovery())
 
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"https://*.bearodactyl.dev", "http://localhost:5173"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Bearodactyl-Client"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -87,6 +86,10 @@ func setupRouter(db *database.DB, cfg *config.Config) *gin.Engine {
 			}
 
 			if strings.Contains(origin, "localhost:") && strings.Contains(origin, "vite") {
+				allow = true
+			}
+
+			if strings.HasPrefix(origin, "http://localhost:") || strings.HasPrefix(origin, "https://localhost:") {
 				allow = true
 			}
 
