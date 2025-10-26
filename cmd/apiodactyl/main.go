@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -10,12 +9,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gin-gonic/autotls"
 	"github.com/gin-gonic/gin"
 	"github.com/thebearodactyl/apiodactyl/internal/config"
 	"github.com/thebearodactyl/apiodactyl/internal/database"
 	"github.com/thebearodactyl/apiodactyl/internal/handlers"
 	"github.com/thebearodactyl/apiodactyl/internal/middleware"
 	"github.com/thebearodactyl/apiodactyl/internal/utils"
+	"golang.org/x/crypto/acme/autocert"
 )
 
 func main() {
@@ -36,6 +37,16 @@ func main() {
 
 	router := setupRouter(db, cfg)
 
+	m := autocert.Manager{
+		Prompt:     autocert.AcceptTOS,
+		HostPolicy: autocert.HostWhitelist("api.bearodactyl.dev"),
+		Cache:      autocert.DirCache("/var/www/.cache"),
+	}
+
+	go func() {
+		log.Fatal(http.ListenAndServe(":80", m.HTTPHandler(nil)))
+	}()
+
 	srv := &http.Server{
 		Addr:         ":" + cfg.App.Port,
 		Handler:      router,
@@ -45,9 +56,9 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("Starting server on :%s (environment: %s)", cfg.App.Port, cfg.App.Environment)
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("Server failed to start: %v", err)
+		log.Printf("Starting HTTPS server for %s", cfg.App.Environment)
+		if err := autotls.Run(router, "api.bearodactyl.dev"); err != nil {
+			log.Fatalf("TLS server failed: %v", err)
 		}
 	}()
 
