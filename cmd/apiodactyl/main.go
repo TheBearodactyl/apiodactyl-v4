@@ -15,7 +15,6 @@ import (
 	"github.com/thebearodactyl/apiodactyl/internal/handlers"
 	"github.com/thebearodactyl/apiodactyl/internal/middleware"
 	"github.com/thebearodactyl/apiodactyl/internal/utils"
-	"golang.org/x/crypto/acme/autocert"
 )
 
 func main() {
@@ -35,40 +34,20 @@ func main() {
 	defer db.Close()
 
 	router := setupRouter(db, cfg)
-
-	certManager := autocert.Manager{
-		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist("api.bearodactyl.dev"),
-		Cache:      autocert.DirCache("/var/www/.cache"),
-	}
+	router.MaxMultipartMemory = 16 << 20
 
 	server := &http.Server{
-		Addr:         ":" + cfg.App.Port,
+		Addr:         ":" + cfg.App.Port, // e.g., 18081
 		Handler:      router,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  120 * time.Second,
-		TLSConfig:    certManager.TLSConfig(),
 	}
 
 	go func() {
-		httpSrv := &http.Server{
-			Addr: ":80",
-			Handler: certManager.HTTPHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				target := "https://" + r.Host + r.URL.RequestURI()
-				http.Redirect(w, r, target, http.StatusMovedPermanently)
-			})),
-		}
-		log.Println("Starting HTTP server on port 80 for ACME challenge and redirects")
-		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("HTTP server failed: %v", err)
-		}
-	}()
-
-	go func() {
-		log.Printf("Starting HTTPS server on port 443 (environment: %s)", cfg.App.Environment)
-		if err := server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("HTTPS server failed: %v", err)
+		log.Printf("Starting HTTP server on port %s (behind nginx TLS)", cfg.App.Port)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Server failed: %v", err)
 		}
 	}()
 
@@ -88,8 +67,6 @@ func main() {
 
 func setupRouter(db *database.DB, cfg *config.Config) *gin.Engine {
 	router := gin.Default()
-
-	router.MaxMultipartMemory = 16 << 20
 
 	router.Use(middleware.RequestLogger())
 	router.Use(gin.Recovery())
