@@ -80,7 +80,7 @@ func setupRouter(db *database.DB, cfg *config.Config) *gin.Engine {
 
 		if userAgent != "" {
 			lowerUA := strings.ToLower(userAgent)
-			if strings.Contains(lowerUA, "bearo") {
+			if strings.Contains(lowerUA, "bearodactyl") {
 				allow = true
 			} else {
 				wellKnownAgents := []string{"Mozilla", "Chrome", "Safari", "Edge", "Postman"}
