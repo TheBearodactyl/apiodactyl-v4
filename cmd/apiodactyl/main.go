@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/thebearodactyl/apiodactyl/internal/config"
 	"github.com/thebearodactyl/apiodactyl/internal/database"
@@ -72,41 +73,27 @@ func setupRouter(db *database.DB, cfg *config.Config) *gin.Engine {
 	router.Use(middleware.RequestLogger())
 	router.Use(gin.Recovery())
 
-	router.Use(func(c *gin.Context) {
-		origin := c.GetHeader("Origin")
-		clientHeader := c.GetHeader("X-Bearodactyl-Client")
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"https://*.bearodactyl.dev", "http://localhost:5173"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Bearodactyl-Client"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		AllowOriginFunc: func(origin string) bool {
+			allow := false
 
-		allow := false
-
-		if clientHeader != "" {
-			lowerClient := strings.ToLower(clientHeader)
-			if strings.Contains(lowerClient, "bearodactyl") {
+			if strings.Contains(origin, "bearodactyl.dev") {
 				allow = true
-			} else {
-				wellKnownClients := []string{"mozilla", "chrome", "safari", "edge", "postman"}
-				for _, client := range wellKnownClients {
-					if strings.Contains(lowerClient, client) {
-						allow = true
-						break
-					}
-				}
 			}
-		}
 
-		if allow {
-			c.Header("Access-Control-Allow-Origin", origin)
-			c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-			c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Authorization, X-Bearodactyl-Client")
-			c.Header("Access-Control-Allow-Credentials", "true")
-		}
+			if strings.Contains(origin, "localhost:") && strings.Contains(origin, "vite") {
+				allow = true
+			}
 
-		if c.Request.Method == http.MethodOptions {
-			c.AbortWithStatus(http.StatusNoContent)
-			return
-		}
-
-		c.Next()
-	})
+			return allow
+		},
+		MaxAge: 12 * time.Hour,
+	}))
 
 	router.NoRoute(handlers.NotFound)
 
