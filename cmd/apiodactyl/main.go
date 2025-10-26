@@ -73,7 +73,7 @@ func setupRouter(db *database.DB, cfg *config.Config) *gin.Engine {
 	router.Use(gin.Recovery())
 
 	corsConfig := cors.Config{
-		AllowOrigins:     []string{"https://*.bearodactyl.dev", "http://*"},
+		AllowOrigins:     []string{"https://*.bearodactyl.dev", "http://localhost:5173"},
 		AllowWildcard:    true,
 		AllowCredentials: true,
 		AllowFiles:       false,
