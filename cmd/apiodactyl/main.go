@@ -71,8 +71,15 @@ func setupRouter(db *database.DB, cfg *config.Config) *gin.Engine {
 
 	router.Use(middleware.RequestLogger())
 	router.Use(gin.Recovery())
-	router.Use(cors.Default())
 
+	corsConfig := cors.Config{
+		AllowOrigins:     []string{"https://*.bearodactyl.dev", "http://*"},
+		AllowWildcard:    true,
+		AllowCredentials: true,
+		AllowFiles:       false,
+	}
+
+	router.Use(cors.New(corsConfig))
 	router.NoRoute(handlers.NotFound)
 
 	h := handlers.NewHandler(db)
