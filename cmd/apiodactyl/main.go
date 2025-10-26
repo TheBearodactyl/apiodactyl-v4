@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -72,31 +71,7 @@ func setupRouter(db *database.DB, cfg *config.Config) *gin.Engine {
 
 	router.Use(middleware.RequestLogger())
 	router.Use(gin.Recovery())
-
-	router.Use(cors.New(cors.Config{
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Bearodactyl-Client"},
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
-		AllowOriginFunc: func(origin string) bool {
-			allow := false
-
-			if strings.Contains(origin, "bearodactyl.dev") {
-				allow = true
-			}
-
-			if strings.Contains(origin, "localhost:") && strings.Contains(origin, "vite") {
-				allow = true
-			}
-
-			if strings.HasPrefix(origin, "http://localhost:") || strings.HasPrefix(origin, "https://localhost:") {
-				allow = true
-			}
-
-			return allow
-		},
-		MaxAge: 12 * time.Hour,
-	}))
+	router.Use(cors.Default())
 
 	router.NoRoute(handlers.NotFound)
 
