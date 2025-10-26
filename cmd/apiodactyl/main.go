@@ -74,18 +74,18 @@ func setupRouter(db *database.DB, cfg *config.Config) *gin.Engine {
 
 	router.Use(func(c *gin.Context) {
 		origin := c.GetHeader("Origin")
-		userAgent := c.GetHeader("User-Agent")
+		clientHeader := c.GetHeader("X-Bearodactyl-Client")
 
 		allow := false
 
-		if userAgent != "" {
-			lowerUA := strings.ToLower(userAgent)
-			if strings.Contains(lowerUA, "bearodactyl") {
+		if clientHeader != "" {
+			lowerClient := strings.ToLower(clientHeader)
+			if strings.Contains(lowerClient, "bearodactyl") {
 				allow = true
 			} else {
-				wellKnownAgents := []string{"Mozilla", "Chrome", "Safari", "Edge", "Postman"}
-				for _, agent := range wellKnownAgents {
-					if strings.Contains(userAgent, agent) {
+				wellKnownClients := []string{"mozilla", "chrome", "safari", "edge", "postman"}
+				for _, client := range wellKnownClients {
+					if strings.Contains(lowerClient, client) {
 						allow = true
 						break
 					}
@@ -96,7 +96,7 @@ func setupRouter(db *database.DB, cfg *config.Config) *gin.Engine {
 		if allow {
 			c.Header("Access-Control-Allow-Origin", origin)
 			c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-			c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Authorization")
+			c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Authorization, X-Bearodactyl-Client")
 			c.Header("Access-Control-Allow-Credentials", "true")
 		}
 
