@@ -75,6 +75,8 @@ func setupRouter(db *database.DB, cfg *config.Config) *gin.Engine {
 	router.Use(middleware.RequestLogger())
 	router.Use(gin.Recovery())
 
+	router.NoRoute(handlers.NotFound)
+
 	h := handlers.NewHandler(db)
 	authHandler := handlers.NewAuthHandler(db, cfg.JWT.Secret, cfg.JWT.ExpirationHours)
 	gamesHandler := handlers.NewGameHandler(db)
