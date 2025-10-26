@@ -9,7 +9,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gin-gonic/autotls"
 	"github.com/gin-gonic/gin"
 	"github.com/thebearodactyl/apiodactyl/internal/config"
 	"github.com/thebearodactyl/apiodactyl/internal/database"
@@ -37,28 +36,39 @@ func main() {
 
 	router := setupRouter(db, cfg)
 
-	m := autocert.Manager{
+	certManager := autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
 		HostPolicy: autocert.HostWhitelist("api.bearodactyl.dev"),
 		Cache:      autocert.DirCache("/var/www/.cache"),
 	}
 
-	go func() {
-		log.Fatal(http.ListenAndServe(":80", m.HTTPHandler(nil)))
-	}()
-
-	srv := &http.Server{
+	server := &http.Server{
 		Addr:         ":" + cfg.App.Port,
 		Handler:      router,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  120 * time.Second,
+		TLSConfig:    certManager.TLSConfig(),
 	}
 
 	go func() {
-		log.Printf("Starting HTTPS server for %s", cfg.App.Environment)
-		if err := autotls.Run(router, "api.bearodactyl.dev"); err != nil {
-			log.Fatalf("TLS server failed: %v", err)
+		httpSrv := &http.Server{
+			Addr: ":80",
+			Handler: certManager.HTTPHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				target := "https://" + r.Host + r.URL.RequestURI()
+				http.Redirect(w, r, target, http.StatusMovedPermanently)
+			})),
+		}
+		log.Println("Starting HTTP server on port 80 for ACME challenge and redirects")
+		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("HTTP server failed: %v", err)
+		}
+	}()
+
+	go func() {
+		log.Printf("Starting HTTPS server on port 443 (environment: %s)", cfg.App.Environment)
+		if err := server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("HTTPS server failed: %v", err)
 		}
 	}()
 
@@ -67,11 +77,9 @@ func main() {
 	<-quit
 
 	log.Println("Shutting down server...")
-
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-
-	if err := srv.Shutdown(ctx); err != nil {
+	if err := server.Shutdown(ctx); err != nil {
 		log.Fatalf("Server forced to shutdown: %v", err)
 	}
 
