@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/thebearodactyl/apiodactyl/internal/config"
 	"github.com/thebearodactyl/apiodactyl/internal/database"
@@ -70,6 +71,7 @@ func setupRouter(db *database.DB, cfg *config.Config) *gin.Engine {
 
 	router.Use(middleware.RequestLogger())
 	router.Use(gin.Recovery())
+	router.Use(cors.Default())
 
 	router.NoRoute(handlers.NotFound)
 
